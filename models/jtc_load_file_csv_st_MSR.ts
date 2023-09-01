@@ -11,6 +11,7 @@ import { constates as CTS } from '../module/jtc_import_ids'
 import * as file from "N/file"
 import * as redirect from 'N/redirect'
 import * as search from 'N/search'
+import * as task from "N/task"
 
 
 export const onRequest = (ctx: EntryPoints.Suitelet.onRequestContext) => {
@@ -80,124 +81,93 @@ const postForm = (ctx: EntryPoints.Suitelet.onRequestContext, form:  UI.Form) =>
         const localidade = body.custpage_localidade
         const account = body.custpage_account
 
-        file_form.folder = 974
+        file_form.folder = 4275
         const idFile = file_form.save()
         log.debug("fileID", idFile )
         
         const fileCsv = file.load({id: idFile})
 
         const content = fileCsv.getContents()
-        const values  = formatCSVToNetsuite(content)
 
         const recAdInventory = record.create({
             type: record.Type.INVENTORY_ADJUSTMENT,
             isDynamic: true
         })
 
-
+        
         
         recAdInventory.setValue({fieldId: CTS.ADJ_INVENTORY.SUBSIDIARY, value: subsidary})
         recAdInventory.setValue({fieldId: CTS.ADJ_INVENTORY.LOCALIDADE, value: localidade})
         recAdInventory.setValue({fieldId: CTS.ADJ_INVENTORY.CONTA, value: account})
         
+        recAdInventory.selectNewLine({sublistId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.ID})
+
+        recAdInventory.setCurrentSublistValue({
+            sublistId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.ID,
+            fieldId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.ITEM,
+            value: 442
+        })
+        recAdInventory.setCurrentSublistValue({
+            sublistId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.ID,
+            fieldId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.QTDE_ADJ,
+            value: 1
+        })
+        recAdInventory.setCurrentSublistValue({
+            sublistId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.ID,
+            fieldId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.LOCALIDADE,
+            value: localidade
+        })
+        recAdInventory.setCurrentSublistValue({
+            sublistId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.ID,
+            fieldId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.PRECO_UNIT,
+            value: 1.02
+        })
+        const inventorydetail = recAdInventory.getCurrentSublistSubrecord({
+            fieldId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.ID,
+            sublistId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.ID
+        })
+        const inv = inventorydetail.selectNewLine({
+            sublistId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.ID
+        })
+        inventorydetail.setCurrentSublistValue({
+            fieldId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.NUM_SERIAL,
+            sublistId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.ID,
+            value: 'teste'          
+        })
+        inventorydetail.setCurrentSublistValue({
+            fieldId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.QUATITY,
+            sublistId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.ID,
+            value: 1           
+        })
+        inventorydetail.commitLine({sublistId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.ID})
+        recAdInventory.commitLine({sublistId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.ID})
+
+
         const sublistId = CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.ID
 
-        if (values.length > 0) {
+        const idInvRec = recAdInventory.save({ignoreMandatoryFields: true})
+
+        // if (values.length > 0) {
             
-            for (var i=0; i < values.length; i++) {
-                const value = values[i].split(";")
+        log.audit('idInvRec',idInvRec)
 
-                recAdInventory.selectNewLine({sublistId: sublistId})
-
-                recAdInventory.setCurrentSublistValue({
-                    fieldId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.ITEM,
-                    sublistId: sublistId,
-                    value: Number(value[0])
-                })
-                recAdInventory.setCurrentSublistValue({
-                    fieldId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.QTDE_ADJ,
-                    sublistId: sublistId,
-                    value: value[1]
-                })
-                recAdInventory.setCurrentSublistValue({
-                    fieldId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.LOCALIDADE,
-                    sublistId: sublistId,
-                    value: String(value[4]).split(" ")[0]
-                })
-                
-                const inventorydetail = recAdInventory.getCurrentSublistSubrecord({
-                    fieldId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.ID,
-                    sublistId: sublistId
-                })
-
-                const inv = inventorydetail.selectNewLine({
-                    sublistId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.ID
-                })
-                log.debug('inv', inv)
-
-                
-
-                if(value[1] >= 0 ) {
-                    inventorydetail.setCurrentSublistValue({
-                        fieldId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.NUM_SERIAL,
-                        sublistId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.ID,
-                        value: value[3]             
-                    })
-                } else {
-                    log.debug("lote", value[3])
-
-                    const createSearchInventory = search.create({
-                        type: 'inventorynumber',
-                        filters: [
-                            ['inventorynumber', search.Operator.CONTAINS, String(value[3]).replace(" ", "")],
-                            "AND", 
-                            ["item.internalid", search.Operator.ANYOF, value[0]], 
-                            "AND", 
-                            ["location", search.Operator.ANYOF, "2"]
-                            
-                        ],
-                        columns: [
-                            search.createColumn({name: 'inventorynumber'})
-                        ]
-                    }).run().getRange({start: 0, end:1})
-                    
-                    log.debug("createSearchInventory",createSearchInventory)
-
-                    inventorydetail.setCurrentSublistValue({
-                        fieldId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.NEGATIVE_SET_SERIAL,
-                        sublistId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.ID,
-                        value: createSearchInventory[0].id       
-                    })
-                }
-                inventorydetail.setCurrentSublistValue({
-                    fieldId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.QUATITY,
-                    sublistId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.ID,
-                    value: value[1]             
-                })
-                // const date = String(value[5]).split("/")
-                // inventorydetail.setCurrentSublistValue({
-                //     fieldId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.DATA_VALIDADE,
-                //     sublistId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.ID,
-                //     value: new Date(`${date[1]}/${date[0]}/${}`)
-                // })
-                const line = inventorydetail.commitLine({sublistId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.ID})
-
-                log.debug('line', line)
-
-                const idInv = recAdInventory.commitLine({sublistId: sublistId})
-
-                log.audit("idInv", idInv)
-                
+        const mapReduceTask = task.create({
+            taskType: task.TaskType.MAP_REDUCE,
+            scriptId: CTS.SCRIPT_MAP_REDUCE.ID,
+            params: {
+                custscript_jtc_ajuste_estoque_id: idInvRec,
+                custscript_jtc_id_file_csv: idFile
             }
-
-            const idInvRec = recAdInventory.save()
-            log.audit('idInvRec',idInvRec)
-            
-            redirect.toRecord({
-                type: record.Type.INVENTORY_ADJUSTMENT,
-                id: idInvRec
-            })
-        }
+          
+        });
+        const idTask = mapReduceTask.submit();
+        
+        
+        redirect.toRecord({
+            type: record.Type.INVENTORY_ADJUSTMENT,
+            id: idInvRec
+        })
+        // }
                 
 
         
@@ -211,19 +181,7 @@ const postForm = (ctx: EntryPoints.Suitelet.onRequestContext, form:  UI.Form) =>
     }
 }
 
-const formatCSVToNetsuite = (content: string) => {
-    const ret = []
-    const x = content.split("\n")
 
-    log.debug("x",x)
 
-    x.shift()
-    x.pop()
-    for (var i=0; i < x.length; i++) {
-        // log.debug(i, x[i])
-        ret.push(x[i])
-    }
 
-    return ret
-    
-}
+

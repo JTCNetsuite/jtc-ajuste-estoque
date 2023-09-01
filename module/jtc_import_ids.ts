@@ -49,5 +49,11 @@ export const constates = {
                 DATA_VALIDADE: 'expirationdate'
             }
         }
+    },
+
+    SCRIPT_MAP_REDUCE: {
+        ID: 1514,
+        ID_REC_AJUSTE: 'custscript_jtc_ajuste_estoque_id',
+        ID_FILE_CSV: 'custscript_jtc_id_file_csv'
     }
 }
