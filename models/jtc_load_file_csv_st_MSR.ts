@@ -155,7 +155,7 @@ const postForm = (ctx: EntryPoints.Suitelet.onRequestContext, form:  UI.Form) =>
             taskType: task.TaskType.MAP_REDUCE,
             scriptId: CTS.SCRIPT_MAP_REDUCE.ID,
             params: {
-                custscript_jtc_ajuste_estoque_id: idInvRec,
+                custscript_jtc_ajuste_estoque_id: idInvRec ,
                 custscript_jtc_id_file_csv: idFile
             }
           
