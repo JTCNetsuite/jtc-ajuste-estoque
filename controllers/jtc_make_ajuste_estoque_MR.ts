@@ -1,6 +1,4 @@
 /**
- * @NAPIVersion 2.x
-/**
  * @NApiVersion 2.x
  * @NScriptType MapReduceScript
  */
