@@ -52,14 +52,14 @@ export const getInputData = () => {
         
         for (var i =0; i < response.length; i++) {
             try {
-                const value = response[i].split(";")
+                const value = response[i].split(",")
 
                 recAdInventory.selectNewLine({sublistId: sublistId})
     
                 recAdInventory.setCurrentSublistValue({
                     fieldId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.ITEM,
                     sublistId: sublistId,
-                    value: Number(value[0])
+                    value: value[0]
                 })
                 recAdInventory.setCurrentSublistValue({
                     fieldId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.QTDE_ADJ,
@@ -71,9 +71,16 @@ export const getInputData = () => {
                     sublistId: sublistId,
                     value: localtion
                 })
+                const units: any = record.load({
+                    id: value[0],
+                    type: 'lotnumberedinventoryitem'
+                }).getValue("stockunit")
+
+                recAdInventory.setCurrentSublistValue({fieldId: 'units', value: units, sublistId: sublistId})
     
-                const valor_string = String(value[4]).split('"')[1]
-                const valor = Number(valor_string.replace(",", "."))
+                // const valor_string = String(value[4]).split('"')[1]
+                // log.debug("valor sitrng", valor_string)
+                const valor = Number(value[4])
     
                 recAdInventory.setCurrentSublistValue({
                     fieldId: CTS.ADJ_INVENTORY.SUBLIST_INVENTORY.PRECO_UNIT,
@@ -122,6 +129,7 @@ export const getInputData = () => {
                         sublistId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.ID,
                         value: createSearchInventory[0].id       
                     })
+                   
                 }
                 inventorydetail.setCurrentSublistValue({
                     fieldId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.QUATITY,
@@ -130,10 +138,42 @@ export const getInputData = () => {
                 })
                 // const date = format.format({type: format.Type.DATE, timezone: format.Timezone.AMERICA_SAO_PAULO, value: value[2]})
                 // log.debug('date', date)
+                let date = String(value[2]).split("/")
+                let d = ''
+                if (Number(date[0]) < 13) {
+                    
+                    d = `${date[1]}/${date[0]}/${date[2]}`
+                } else {
+                    d = `${date[0]}/${date[1]}/${date[2]}`
+                }
+
+                log.debug("date", date)
+                // const createSearchInventory = search.create({
+                //     type: 'inventorynumber',
+                //     filters: [
+                //         ['inventorynumber', search.Operator.CONTAINS, String(value[3]).replace(" ", "")],
+                //         "AND", 
+                //         ["item.internalid", search.Operator.ANYOF, value[0]], 
+                //         "AND", 
+                //         ["location", search.Operator.ANYOF, localtion]
+                        
+                //     ],
+                //     columns: [
+                //         search.createColumn({name: 'inventorynumber'})
+                //     ]
+                // }).run().getRange({start: 0, end:1})
+                // const invtoryReco = record.load({
+                //     id: createSearchInventory[0].id,
+                //     type: 'inventorynumber'
+                // })
+                // invtoryReco.setValue({fieldId: 'expirationdate', value: new Date(d)})
+                // const x = invtoryReco.save()
+                // log.audit('id ', x)
+
                 inventorydetail.setCurrentSublistValue({
                     fieldId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.DATA_VALIDADE,
                     sublistId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.ID,
-                    value: new Date(value[2])
+                    value: new Date(d)
                 })
                 const line = inventorydetail.commitLine({sublistId: CTS.ADJ_INVENTORY.SUBRECORD_INVENTORY_DETAIL.SUBLIST_INV_DETAIL.ID})
                 const lin_inv = recAdInventory.commitLine({sublistId: sublistId})

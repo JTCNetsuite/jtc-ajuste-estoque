@@ -81,7 +81,7 @@ const postForm = (ctx: EntryPoints.Suitelet.onRequestContext, form:  UI.Form) =>
         const localidade = body.custpage_localidade
         const account = body.custpage_account
 
-        file_form.folder = 3278
+        file_form.folder = 4275
         const idFile = file_form.save()
         log.debug("fileID", idFile )
         
@@ -153,7 +153,7 @@ const postForm = (ctx: EntryPoints.Suitelet.onRequestContext, form:  UI.Form) =>
 
         const mapReduceTask = task.create({
             taskType: task.TaskType.MAP_REDUCE,
-            scriptId: 1514,
+            scriptId: 1511,
             params: {
                 custscript_jtc_ajuste_estoque_id: idInvRec ,
                 custscript_jtc_id_file_csv: idFile
